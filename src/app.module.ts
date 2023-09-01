@@ -12,26 +12,36 @@ import { Role } from './user/entity/Role';
 import { Permission } from './user/entity/permission';
 import { RedisModule } from './redis/redis.module';
 import { EmailModule } from './email/email.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: '127.0.0.1',
-      port: 3306,
-      username: 'root',
-      password: '123456',
-      database: 'meeting_room',
-      synchronize: true,
-      logging: true,
-      entities: [User, Role, Permission],
-      poolSize: 3,
-      connectorPackage: 'mysql2',
-      extra: {
-        authPlugin: 'sha256_password',
-      },
-    }),
     UserModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: 'src/.env',
+    }),
+    TypeOrmModule.forRootAsync({
+      useFactory(configService: ConfigService) {
+        return {
+          type: 'mysql',
+          host: configService.get('mysql_server_host'),
+          port: configService.get('mysql_server_port'),
+          username: configService.get('mysql_server_username'),
+          password: configService.get('mysql_server_password'),
+          database: configService.get('mysql_server_database'),
+          synchronize: true,
+          logging: true,
+          entities: [User, Role, Permission],
+          poolSize: 10,
+          connectorPackage: 'mysql2',
+          extra: {
+            authPlugin: 'sha256_password',
+          },
+        };
+      },
+      inject: [ConfigService],
+    }),
     RedisModule,
     EmailModule,
   ],
