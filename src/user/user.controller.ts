@@ -16,6 +16,10 @@ import { RegisterUserDto } from './dto/RegisterUserDto';
 import { LoginUserDto } from './dto/LoginUserDto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { RequireLogin, UserInfo } from 'src/custom.decorator';
+import { UserDetailVo } from './vo/UserDetailVo';
+import { UpdateUserPasswordDto } from './dto/UpdateUserPasswordDto';
+import { RedisService } from 'src/redis/redis.service';
 
 @Controller('user')
 export class UserController {
@@ -24,6 +28,12 @@ export class UserController {
 
   @Inject(ConfigService)
   private configService: ConfigService;
+
+  @Inject(RedisService)
+  private redisService: RedisService;
+
+  @Inject(EmailService)
+  private emailService: EmailService;
 
   constructor(private readonly userService: UserService) {}
 
@@ -160,5 +170,48 @@ export class UserController {
     } catch (e) {
       throw new UnauthorizedException('token 已失效，请重新登录');
     }
+  }
+
+  @Get('info')
+  @RequireLogin()
+  async userInfo(@UserInfo('userId') userId: number) {
+    const user = await this.userService.findUserDetailById(userId);
+    const vo = new UserDetailVo();
+    vo.id = user.id;
+    vo.email = user.email;
+    vo.username = user.username;
+    vo.headPic = user.headPic;
+    vo.phoneNumber = user.phoneNumber;
+    vo.nickName = user.nickName;
+    vo.createTime = user.createTime;
+    vo.isFrozen = user.isFrozen;
+    return vo;
+  }
+
+  @Post(['update_password', 'admin/update_password'])
+  @RequireLogin()
+  async updatePassword(
+    @UserInfo('userId') userId: number,
+    @Body() passwordDto: UpdateUserPasswordDto,
+  ) {
+    return await this.userService.updatePassword(userId, passwordDto);
+  }
+
+  @Get('update_password/captcha')
+  async updatePasswordCaptcha(@Query('address') address: string) {
+    const code = Math.random().toString().slice(2, 8);
+
+    await this.redisService.set(
+      `update_password_captcha_${address}`,
+      code,
+      10 * 60,
+    );
+
+    await this.emailService.sendMail({
+      to: address,
+      subject: '更改密码验证码',
+      html: `<p>你的更改密码验证码是 ${code}</p>`,
+    });
+    return '发送成功';
   }
 }
