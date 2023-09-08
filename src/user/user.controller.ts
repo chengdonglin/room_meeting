@@ -20,6 +20,7 @@ import { RequireLogin, UserInfo } from 'src/custom.decorator';
 import { UserDetailVo } from './vo/UserDetailVo';
 import { UpdateUserPasswordDto } from './dto/UpdateUserPasswordDto';
 import { RedisService } from 'src/redis/redis.service';
+import { EmailService } from 'src/email/email.service';
 
 @Controller('user')
 export class UserController {
