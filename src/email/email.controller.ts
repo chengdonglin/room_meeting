@@ -2,10 +2,12 @@
  * @Description:
  * @Date: 2023-09-01 11:44:57
  */
-import { Controller, Get, Inject, Query } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Inject, Query } from '@nestjs/common';
 import { EmailService } from './email.service';
 import { RedisService } from 'src/redis/redis.service';
+import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('邮箱验证码')
 @Controller('email')
 export class EmailController {
   @Inject(EmailService)
@@ -16,6 +18,18 @@ export class EmailController {
 
   constructor() {}
 
+  @ApiQuery({
+    name: 'address',
+    type: String,
+    description: '邮箱地址',
+    required: true,
+    example: 'xxx@xx.com',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '发送成功',
+    type: String,
+  })
   @Get('register-captcha')
   async captcha(@Query('address') address: string) {
     const code = Math.random().toString().slice(2, 8);
